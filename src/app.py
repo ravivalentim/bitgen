@@ -6,10 +6,10 @@ import hashlib
 
 
 conn = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='TEX7E!ptUptgEN',
-    database='bitvault'
+    host='YOUR_HOST',
+    user='YOUR_USER',
+    password='YOUR_PASSWORD',
+    database='YOUR_DATABASE'
 )
 
 cursor = conn.cursor()
