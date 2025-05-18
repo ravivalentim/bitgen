@@ -10,13 +10,16 @@ conn = mysql.connector.connect(
 
 cursor = conn.cursor()
 
-print('BitGen your password manager v0.1')
+print('\n\nBitGen your password manager v0.1\n')
+
+def start_menu():
+    print('\t[1] - Log in to the vault')
+    print('\t[2] - Create an account')
 
 def app_menu():
-    print('\t[1] - Create an account')
-    print('\t[2] - Save a password')
-    print('\t[3] - View passwords')
-    print('\t[4] - Exit from app')
+    print('\t[1] - Save a password')
+    print('\t[2] - View your vault')
+    print('\t[3] - Exit from app')
 
 def save_on_db(userid, password):
     cursor.execute('INSERT INTO users (userid, hash_password) VALUES (%s, %s)', (userid.lower(), password, ))
@@ -24,75 +27,88 @@ def save_on_db(userid, password):
 
 def create_accout():
     print('\n>>> Welcome to BitGen! You password manager. Let\'go create an account. <<<\n')
-    print('\tEnter your userid..: ', end='')
-    userid = str(input())
-    print('\tEnter your password: ', end='')
-    password = str(input())
+    while True:
+        try:
+            print('\tCreate yout userID................................: ', end='')
+            userid = str(input())
+            print('\tCreate you password (must be 8 characters or more): ', end='')
+            password = str(input())
 
-    hash_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    save_on_db(userid, hash_password)
-    print('\n\t\aAccount created!')
+            while (len(password) < 8):
+                print('\tError: your PASSWORD must be 8 characters or more: ', end='')
+                password = str(input())
+            
+            hash_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+            save_on_db(userid, hash_password)
+            print('\n\t\aAccount created!\n')
+            break;
+        except mysql.connector.errors.IntegrityError:
+            print('Error: UserID already registered, please create a new one. (mysql.connector.errors.IntegrityError)')
 
-def check_vault_password(userid, password):
+def login():
+
+    userid = str(input('\tEnter your userID....: '))
+    password = str(input('\tEnter your password: '))
+
     cursor.execute('SELECT hash_password FROM users WHERE userid=%s', (userid, ))
     result = cursor.fetchone()
-
+  
     if (result == None):
-        return False
+        return [False,]
     
     hash_password = result[0].encode('utf-8')
 
-    return bcrypt.checkpw(password.encode('utf-8'), hash_password)
-def save_password_db():
+    return [bcrypt.checkpw(password.encode('utf-8'), hash_password), userid]
+   
 
-    userid = str(input('\tEnter your userid....: '))
-    password = str(input('\tEnter your password: '))
+def save_password_db(userid):
 
-    print()
+    login = str(input('\tEnter the login......: '))
+    password = str(input('\tEnter the password: '))
+        
+    cursor.execute('INSERT INTO vault (userid, login, passwrd) VALUES (%s, %s, %s)', (userid, login, password))
+    conn.commit()
 
-    if check_vault_password(userid, password):
-        login = str(input('\tEnter the login......: '))
-        password = str(input('\tEnter the password: '))
+def view_password(userid):
 
-        cursor.execute('INSERT INTO vault (userid, login, passwrd) VALUES (%s, %s, %s)', (userid, login, password))
-        conn.commit()
+    cursor.execute('SELECT login, passwrd FROM vault WHERE userid=%s', (userid, ))
+    data = cursor.fetchall()
+
+    if data == []:
+        print('\a\nYour vault is empty.\n')
     else:
-        print('\aInvalid username or password. Try again')
-    
-def view_password():
+        print('\n-----------------------')
+        for users in data:
+            login = users[0]
+            password = users[1]
 
-    userid = str(input('\tEnter your userid....: '))
-    password = str(input('\tEnter your password: '))
-
-    if check_vault_password(userid, password):
-        cursor.execute('SELECT login, passwrd FROM vault WHERE userid=%s', (userid, ))
-        data = cursor.fetchall()
-
-        if data == []:
-            print('\a\nYour vault is empty.\n')
-        else:
-            print('\n-----------------------')
-            for users in data:
-                login = users[0]
-                password = users[1]
-
-                print(f'\tLogin...: {login}')
-                print(f'\tPassword: {password}\n')
-            print('-----------------------\n')
-    else:
-        print('\aInvalid username or password. Try again')
+            print(f'\tLogin...: {login}')
+            print(f'\tPassword: {password}')
+        print('-----------------------\n')
 
 while (True):
-    app_menu()
-    action = str(input('Enter your option: '))
+    start_menu()
+    start_action = str(input('Enter your option: '))
 
-    if action == '1':
+    if start_action == '1':
+        login_result = login()   # gets login result [0] -> True or False | [1] UserID
+        if login_result[0]:
+            while (True):
+                userID = login_result[1]
+                print(f"\t\nWelcome to your vault, {str(userID).capitalize()}.\n")
+                app_menu()
+                action = str(input('Enter your option: '))
+                if action == '1':
+                    save_password_db(userID)
+                elif action == '2':
+                    view_password(userID)
+                elif action == '3':
+                    break;
+                else:
+                    print("\aEnter a valid option")
+    if start_action == '2':
         create_accout()
-    elif action == '2':
-        save_password_db()
-    elif action == '3':
-        view_password()
-    elif action == '4':
+    elif start_action == '4':
         print("\aBye (:")
         exit()
     else:
