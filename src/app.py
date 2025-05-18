@@ -1,5 +1,9 @@
 import mysql.connector
 import bcrypt
+from cryptography.fernet import Fernet
+import base64
+import hashlib
+
 
 conn = mysql.connector.connect(
     host='localhost',
@@ -16,6 +20,7 @@ def start_menu():
     print('\t[1] - Log in to the vault')
     print('\t[2] - Create an account')
     print('\t[3] - Exit')
+    
 
 def app_menu():
     print('\t[1] - Save a password')
@@ -27,7 +32,7 @@ def save_on_db(userid, password):
     conn.commit()
 
 def create_account():
-    print('\n>>> Welcome to BitGen! You password manager.\nLet\'go create an account. <<<\n')
+    print('\n>>> Welcome to BitGen! You password manager. Let\'go create an account. <<<\n')
     while True:
         try:
             print('\tCreate your userID................................: ', end='')
@@ -41,10 +46,10 @@ def create_account():
             
             hash_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             save_on_db(userid, hash_password)
-            print('\n\t\aCongratulations, your account has been created successfully!\n')
+            print('\n\t\aCongratulations, your account has been created successfully.\n')
             break;
         except mysql.connector.errors.IntegrityError:
-            print('Error: UserID already registered, please create a new one.')
+            print('Error: UserID already registered, please create a new one.)')
 
 def login():
 
@@ -59,18 +64,34 @@ def login():
     
     hash_password = result[0].encode('utf-8')
 
-    return [bcrypt.checkpw(password.encode('utf-8'), hash_password), userid]
-   
+    return [bcrypt.checkpw(password.encode('utf-8'), hash_password), userid, password]
 
-def save_password_db(userid):
+def generate_key(vpassword: str) -> bytes:
+    
+    key = hashlib.sha256(vpassword.encode()).digest()
+ 
+    return base64.urlsafe_b64encode(key)
+
+def encrypt(password: str, vpassword: str) -> bytes:
+    key = generate_key(vpassword)
+    f = Fernet(key)
+    return f.encrypt(password.encode())
+
+def decrypt(encry_password: bytes, vpassword: str) -> str:
+    key = generate_key(vpassword)
+    f = Fernet(key)
+    return f.decrypt(encry_password).decode()
+
+def save_password_db(userid, vault_password):
 
     login = str(input('\tEnter the login......: '))
     password = str(input('\tEnter the password: '))
-        
-    cursor.execute('INSERT INTO vault (userid, login, passwrd) VALUES (%s, %s, %s)', (userid, login, password))
+    
+    
+    cursor.execute('INSERT INTO vault (userid, login, passwrd) VALUES (%s, %s, %s)', (userid, login, encrypt(password, vault_password)))
     conn.commit()
 
-def view_password(userid):
+def view_password(userid, vault_password):
 
     cursor.execute('SELECT login, passwrd FROM vault WHERE userid=%s', (userid, ))
     data = cursor.fetchall()
@@ -83,8 +104,14 @@ def view_password(userid):
             login = users[0]
             password = users[1]
 
-            print(f'Login...: {login}')
-            print(f'Password: {password}\n')
+            try:
+                # Senhas salvas depois da implementação de criptografia
+                print(f'\tLogin...: {login}')
+                print(f'\tPassword: {decrypt(password, vault_password)}\n')
+            except: 
+                # Senhas salvas antes da implementação de criptografia
+                print(f'\tLogin...: {login}')
+                print(f'\tPassword: {password}\n')
         print('-----------------------\n')
 
 while (True):
@@ -96,23 +123,26 @@ while (True):
         if login_result[0]:
             while (True):
                 userID = login_result[1]
-                print(f'\t\nWelcome to your vault, {str(userID).capitalize()}.\n')
+                vault_password = login_result[2]
+
+                print(f"\t\nWelcome to your vault, {str(userID).capitalize()}.\n")
                 app_menu()
                 action = str(input('Enter your option: '))
                 if action == '1':
-                    save_password_db(userID)
+                    save_password_db(userID, vault_password)
                 elif action == '2':
-                    view_password(userID)
+                    view_password(userID, vault_password)
                 elif action == '3':
                     break;
                 else:
-                    print('\aEnter a valid option')
+                    print("\aEnter a valid option")
         else:
-            print('\n\aUser not found. Create an account now!\n')
+            print('\n\tUser not found. Create an account now!\n\n')
     elif start_action == '2':
         create_account()
     elif start_action == '3':
-        print('\aBye (:')
+        cursor.close()
+        print("\aBye (:")
         exit()
     else:
         print('\aEnter a valid option')
