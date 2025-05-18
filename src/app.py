@@ -15,35 +15,36 @@ print('\n\nBitGen your password manager v0.1\n')
 def start_menu():
     print('\t[1] - Log in to the vault')
     print('\t[2] - Create an account')
+    print('\t[3] - Exit')
 
 def app_menu():
     print('\t[1] - Save a password')
     print('\t[2] - View your vault')
-    print('\t[3] - Exit from app')
+    print('\t[3] - Login menu')
 
 def save_on_db(userid, password):
     cursor.execute('INSERT INTO users (userid, hash_password) VALUES (%s, %s)', (userid.lower(), password, ))
     conn.commit()
 
-def create_accout():
-    print('\n>>> Welcome to BitGen! You password manager. Let\'go create an account. <<<\n')
+def create_account():
+    print('\n>>> Welcome to BitGen! You password manager.\nLet\'go create an account. <<<\n')
     while True:
         try:
-            print('\tCreate yout userID................................: ', end='')
+            print('\tCreate your userID................................: ', end='')
             userid = str(input())
-            print('\tCreate you password (must be 8 characters or more): ', end='')
+            print('\tCreate your password (must be 8 characters or more): ', end='')
             password = str(input())
 
             while (len(password) < 8):
-                print('\tError: your PASSWORD must be 8 characters or more: ', end='')
+                print('\tTry again: your PASSWORD must be 8 characters or more: ', end='')
                 password = str(input())
             
             hash_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
             save_on_db(userid, hash_password)
-            print('\n\t\aAccount created!\n')
+            print('\n\t\aCongratulations, your account has been created successfully!\n')
             break;
         except mysql.connector.errors.IntegrityError:
-            print('Error: UserID already registered, please create a new one. (mysql.connector.errors.IntegrityError)')
+            print('Error: UserID already registered, please create a new one.')
 
 def login():
 
@@ -82,8 +83,8 @@ def view_password(userid):
             login = users[0]
             password = users[1]
 
-            print(f'\tLogin...: {login}')
-            print(f'\tPassword: {password}')
+            print(f'Login...: {login}')
+            print(f'Password: {password}\n')
         print('-----------------------\n')
 
 while (True):
@@ -95,7 +96,7 @@ while (True):
         if login_result[0]:
             while (True):
                 userID = login_result[1]
-                print(f"\t\nWelcome to your vault, {str(userID).capitalize()}.\n")
+                print(f'\t\nWelcome to your vault, {str(userID).capitalize()}.\n')
                 app_menu()
                 action = str(input('Enter your option: '))
                 if action == '1':
@@ -105,11 +106,13 @@ while (True):
                 elif action == '3':
                     break;
                 else:
-                    print("\aEnter a valid option")
-    if start_action == '2':
-        create_accout()
-    elif start_action == '4':
-        print("\aBye (:")
+                    print('\aEnter a valid option')
+        else:
+            print('\n\aUser not found. Create an account now!\n')
+    elif start_action == '2':
+        create_account()
+    elif start_action == '3':
+        print('\aBye (:')
         exit()
     else:
-        print("\aEnter a valid option")
+        print('\aEnter a valid option')
