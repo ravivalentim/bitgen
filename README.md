@@ -1,7 +1,6 @@
 # BitGen, um gerenciador de senhas simples e elegante escrito em Python.
 
 ## Recursos:
-- Sistema de login
 - Salvar senhas de forma segura no cofre
 - Recuperar senhas do seu cofre
 
